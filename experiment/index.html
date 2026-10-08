@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>CRFM 0.5 | Emission / Observation Lab</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#040812;color:#f8ddb0;font-family:system-ui,-apple-system,sans-serif}canvas{display:block;width:100vw;height:100dvh;touch-action:none}#top{position:fixed;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:flex;justify-content:space-between;align-items:start;pointer-events:none;gap:10px}#top>*{pointer-events:auto}.title{background:#081421dd;border:1px solid #a67e4866;border-radius:12px;padding:9px 11px;max-width:205px}.title strong{font-size:13px;letter-spacing:1px}.title small{display:block;color:#a9b9c7;font-size:10px;margin-top:3px}.actions{display:flex;gap:6px}button{color:#f5d6a0;background:#0c1a2ce8;border:1px solid #b88d5177;border-radius:11px;padding:10px;font:12px system-ui;touch-action:manipulation}button.active{background:#5a3b1b;border-color:#ffe0a1}#bottom{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));left:12px;right:12px;pointer-events:none;display:flex;flex-direction:column;gap:8px;align-items:end}#bottom>*{pointer-events:auto}.mode{display:flex;gap:5px;background:#07121edc;padding:5px;border-radius:12px;border:1px solid #ab854766}.mode button{padding:10px 12px}#readout{align-self:stretch;max-width:380px;background:#07121ed8;border:1px solid #99734366;border-radius:10px;padding:8px 10px;font-size:11px;color:#c6d1d8;line-height:1.5}#hint{position:fixed;left:12px;top:91px;font-size:11px;color:#b9c6d3;max-width:220px;pointer-events:none;text-shadow:0 1px 5px #000}#wheel{position:fixed;bottom:max(116px,calc(env(safe-area-inset-bottom) + 116px));right:14px;display:flex;gap:6px}#wheel button{min-width:48px;font-size:16px}a{color:#ffe0a1}
+</style></head><body><canvas id="view" aria-label="CRFM projected field and single movable navigation cube"></canvas>
+<div id="top"><div class="title"><strong>CRFM 0.5 · FIELD LAB</strong><small>One instrument · one continuous field</small></div><div class="actions"><button id="reset">Reset</button></div></div>
+<div id="hint">Drag the cube to reposition it.<br>Drag outside the cube to turn its orientation.<br>Use ◀ ▶ to turn through faces.</div>
+<div id="wheel"><button id="left" aria-label="Turn left">◀</button><button id="right" aria-label="Turn right">▶</button><button id="up" aria-label="Tilt up">▲</button><button id="down" aria-label="Tilt down">▼</button></div>
+<div id="bottom"><div class="mode"><button id="emission" class="active">Emission follows</button><button id="observation">Observation follows</button></div><div id="readout">Initializing spatial core…</div></div>
+<script type="module">
+import {createState,createInstrument,moveInstrument,turnInstrument,aimQuat,qRot,qAxis,qMul,qNorm,X,Y,Z,sub,add,scale} from '../core/core.js';
+const canvas=document.getElementById('view'),ctx=canvas.getContext('2d'),readout=document.getElementById('readout');
+let w=1,h=1,dpr=1,mode='emission',drag=null,turn=0,tilt=0,zoom=1;
+const observer=createState({pos:[0,-9,1.7],q:aimQuat([0,-9,1.7],[0,0,.7])});
+let instrument=createInstrument({screen:[.26,.73],size:.115});
+const reset=()=>{instrument=createInstrument({screen:[.26,.73],size:.115});turn=0;tilt=0;zoom=1;draw()};
+function resize(){w=innerWidth;h=innerHeight;dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
+function project(p,origin,ang,skew=1){const c=Math.cos(ang),s=Math.sin(ang);const x=p[0]*c-p[1]*s,y=(p[0]*s+p[1]*c)*.56-p[2]*.95;return [origin[0]+x*skew,origin[1]+y*skew]}
+function path(points,origin,ang,color,width=1){ctx.beginPath();points.forEach((p,i)=>{const [x,y]=project(p,origin,ang,zoom);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke()}
+function draw(){
+ if(!ctx)return;ctx.clearRect(0,0,w,h);
+ const bg=ctx.createRadialGradient(w*.55,h*.42,10,w*.5,h*.55,Math.max(w,h)*.85);bg.addColorStop(0,'#14223b');bg.addColorStop(.6,'#090f20');bg.addColorStop(1,'#02040b');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+ const cube=[instrument.screen[0]*w,instrument.screen[1]*h],size=Math.max(30,Math.min(w,h)*instrument.size);
+ const anchor=mode==='emission'?[cube[0]+size*.17,cube[1]-size*.45]:[w*.5,h*.55];
+ const theta=turn+(mode==='observation'?.18:0),pitch=Math.sin(tilt)*.65;
+ const fieldOrigin=[anchor[0]+Math.sin(theta)*42,anchor[1]-size*.35+Math.sin(pitch)*30];
+ // One continuous parametric field: its cross-sections evolve along one uninterrupted trajectory.
+ const rings=24,steps=64,base=Math.min(w,h)*.22;
+ for(let k=0;k<rings;k++){
+  const t=k/(rings-1),height=(t-.12)*Math.min(h*.7,500);
+  const radius=base*(.2+.85*Math.sin(Math.PI*t)**2+.35*t);
+  const pts=[];for(let j=0;j<=steps;j++){const a=j/steps*Math.PI*2+theta*.3;const xx=Math.cos(a)*radius,yy=Math.sin(a)*radius;pts.push([xx,yy,height])}
+  const opacity=.08+.25*(1-Math.abs(t-.45));path(pts,fieldOrigin,theta,'rgba(245,192,102,'+opacity+')',.65);
+ }
+ // Continuous axial guide: single source, no duplicate world monuments.
+ const axis=[];for(let k=0;k<=100;k++){const t=k/100;axis.push([Math.sin(t*4+theta)*base*.13*t,Math.sin(t*2)*base*.12,(t-.12)*Math.min(h*.7,500)])}
+ path(axis,fieldOrigin,theta,'rgba(255,218,139,.9)',2);
+ const apex=project([0,0,Math.min(h*.7,500)*.4],fieldOrigin,theta,zoom);
+ const glow=ctx.createRadialGradient(apex[0],apex[1],0,apex[0],apex[1],base*.9);glow.addColorStop(0,'#ffe2a626');glow.addColorStop(1,'#ffe2a600');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(apex[0],apex[1],base*.9,0,Math.PI*2);ctx.fill();
+ // A single instrument cube, independent of field scale. Faces rotate with its own quaternion.
+ const corners=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+ const q=qNorm(qMul(qAxis(Z,turn),qAxis(X,tilt)));
+ const vertices=corners.map(p=>{const v=qRot(q,p);return[cube[0]+(v[0]+v[1]*.48)*size*.48,cube[1]+(v[1]*.29-v[2]*.78)*size*.48,v[1]]});
+ const faces=[[0,1,2,3],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]];
+ faces.sort((a,b)=>b.reduce((s,i)=>s+vertices[i][2],0)-a.reduce((s,i)=>s+vertices[i][2],0));
+ faces.forEach((face,idx)=>{ctx.beginPath();face.forEach((id,j)=>j?ctx.lineTo(...vertices[id].slice(0,2)):ctx.moveTo(...vertices[id].slice(0,2)));ctx.closePath();ctx.fillStyle=['#0c1724','#101f31','#172b3c','#091522','#1c3343','#12283a'][idx];ctx.fill();ctx.strokeStyle='#e2b977';ctx.lineWidth=1.5;ctx.stroke()});
+ ctx.beginPath();ctx.arc(cube[0],cube[1]-size*.26,3.2,0,Math.PI*2);ctx.fillStyle='#ffda8a';ctx.fill();
+ ctx.font='11px system-ui';ctx.fillStyle='#b8c8d7';ctx.fillText('INSTRUMENT',cube[0]-36,cube[1]+size*.83);
+ ctx.font='10px system-ui';ctx.fillStyle='#f4d39d';ctx.fillText('CONTINUOUS PROJECTION',Math.max(12,fieldOrigin[0]-58),Math.max(108,fieldOrigin[1]-Math.min(h*.7,500)*.5-10));
+ readout.textContent=(mode==='emission'?'EMISSION: field anchor follows instrument.':'OBSERVATION: field anchor remains fixed; instrument changes viewing orientation.')+'  ·  Cube ('+instrument.screen.map(n=>n.toFixed(2)).join(', ')+')  ·  Yaw '+turn.toFixed(2)+'  ·  Tilt '+tilt.toFixed(2);
+}
+function setMode(m){mode=m;document.getElementById('emission').classList.toggle('active',m==='emission');document.getElementById('observation').classList.toggle('active',m==='observation');draw()}
+document.getElementById('emission').onclick=()=>setMode('emission');document.getElementById('observation').onclick=()=>setMode('observation');document.getElementById('reset').onclick=reset;
+for(const [id,axis,angle] of [['left','yaw',-.18],['right','yaw',.18],['up','pitch',.18],['down','pitch',-.18]])document.getElementById(id).onclick=()=>{if(axis==='yaw')turn+=angle;else tilt+=angle;turnInstrument(instrument,axis==='yaw'?Z:X,angle);draw()};
+canvas.addEventListener('pointerdown',e=>{const cx=instrument.screen[0]*w,cy=instrument.screen[1]*h;drag={id:e.pointerId,x:e.clientX,y:e.clientY,cube:Math.hypot(e.clientX-cx,e.clientY-cy)<Math.max(54,Math.min(w,h)*instrument.size)};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;if(drag.cube)moveInstrument(instrument,dx/w,dy/h);else{turn+=dx*.008;tilt+=dy*.008;turnInstrument(instrument,Z,dx*.008);turnInstrument(instrument,X,dy*.008)}draw()});
+for(const name of ['pointerup','pointercancel'])canvas.addEventListener(name,()=>drag=null);
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.45,Math.min(2.5,zoom-e.deltaY*.001));draw()},{passive:false});
+addEventListener('resize',resize);resize();
+</script></body></html>
