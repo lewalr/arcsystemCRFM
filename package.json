@@ -1,0 +1,1 @@
+{"name":"crfm-headless-core","private":true,"type":"module","scripts":{"test":"node --test core/*.test.mjs"}}
