@@ -11,6 +11,6 @@ test('local rotation is independent of world position',()=>{const s=fresh(),p=[.
 test('pure-axis drag independent of event count',()=>{const a=fresh(),b=fresh();C.applyDrag(a,center,100,0);for(let i=0;i<50;i++)C.applyDrag(b,center,2,0);near(C.len(C.sub(a.pos,b.pos)),0,1e-9);near(C.qAngle(a.q,b.q),0,1e-9)});
 test('trajectory does not alias caller arrays',()=>{const s=fresh(),p=[2,3,4];s.traj.moveTo(p);p[0]=99;assert.equal(s.traj.pos[0],2);assert.equal(s.traj.samples.at(-1).p[0],2)});
 test('teleports break trail and do not add travel',()=>{const s=fresh();C.translateLocal(s,[0,1,0]);const d=s.traj.travel;C.teleport(s,[20,0,0],C.QI);near(s.traj.travel,d);assert.ok(s.traj.jump>0);assert.ok(s.traj.samples.at(-1).brk)});
-test('instrument screen position does not move observer or world',()=>{const s=fresh(),p=[...s.pos],i=C.createInstrument();C.moveInstrument(i,-.4,.2);C.turnInstrument(i,C.Z,.8);assert.deepEqual(s.pos,p);assert.equal(i.screen[0],-.24)});
+test('instrument screen position does not move observer or world',()=>{const s=fresh(),p=[...s.pos],i=C.createInstrument();C.moveInstrument(i,-.4,.2);C.turnInstrument(i,C.Z,.8);assert.deepEqual(s.pos,p);near(i.screen[0],-.24,1e-12)});
 test('legacy elevation is clamped',()=>{let p=[0,1.7,9];for(let i=0;i<100;i++)p=L.legacyNavStep(p,{az:0,el:1},.05);const el=Math.atan2(p[1]-.7,Math.hypot(p[0],p[2]));near(el,1.25,1e-9)});
 test('legacy gesture uses per-event clamped command',()=>{assert.ok(L.legacyGestureCommand(20,0).az>5*L.legacyGestureCommand(2,0).az)});
