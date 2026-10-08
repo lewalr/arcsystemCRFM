@@ -1,0 +1,42 @@
+name: Publish CRFM 0.5 experiment
+on:
+  push:
+    branches: [crfm-0.3]
+    paths:
+      - 'experiment/**'
+      - 'core/core.js'
+      - '.github/workflows/publish-crfm-experiment.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: crfm-experiment-publisher
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: crfm-0.3
+          path: candidate
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: pages
+          persist-credentials: true
+          fetch-depth: 0
+      - name: Sync isolated experiment
+        working-directory: pages
+        run: |
+          set -euo pipefail
+          mkdir -p experiment core
+          cp ../candidate/experiment/index.html experiment/index.html
+          cp ../candidate/core/core.js core/core.js
+          git add -- experiment/index.html core/core.js
+          if git diff --cached --quiet; then echo "Already published"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Publish isolated CRFM 0.5 experiment"
+          git push origin HEAD:main
