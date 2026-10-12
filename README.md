@@ -62,3 +62,18 @@ For a 0.3 test, open the [diagnostic preview](https://lewalr.github.io/arcsystem
 ## Branch-specific status — `main`
 
 The repository root `index.html` is the **CRFM 0.2 production baseline**. Do not replace it with the 0.3 candidate until the release is explicitly approved. The `preview/index.html` file on this branch is a separate test copy of 0.3; it does not change the root application. This README records the shared ARC/CRFM history and links to the development branch.
+
+
+---
+
+## Further insight — 2026-10-12: observer relocation
+
+**Prior discoveries:** CRFM separates persistent world/substrate, observer reference frame, medium projection, and validation. Previous trials identified the distinction between executing a construction rule and illustrating it.
+
+**New discovery:** In the black-cube holographic gallery sequence, a request to walk around the sculpture yielded a large frontal view with three arrow-linked smaller views. The output illustrated the camera journey instead of supplying a single relocated viewpoint. The cube, finger–water contact and ripple remained recognizable, but a fixed world geometry and one tracked observer were not verified.
+
+**Further insight:** *Operation–representation substitution* is a working diagnostic for an image that depicts an intended operation instead of executing its requested resulting state. Semantic resemblance is not evidence of invariant geometry or an internal 3D model.
+
+**Proposed outcome:** Freeze the source; specify one rear-right destination camera approximately 120 degrees around the stationary sculpture; forbid panels/arrows; compare against a narrated-motion control. Evaluate camera pose, landmark correspondence, occlusion/parallax, lighting, and observer identity independently. Archive failures and uncertainty. See the dated `CRFM-OBSERVER-RELOCATION-OPERATION-SUBSTITUTION.md` tile in this repository.
+
+**Status:** Output observation established; geometric continuity and explanatory mechanism unresolved. Existing release and validation history remains unchanged.
